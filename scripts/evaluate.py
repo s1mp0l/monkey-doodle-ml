@@ -20,7 +20,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from _common import ROOT
+from _common import ROOT  # noqa: F401
 from doodle.data import PreparedData
 from doodle.model import load_checkpoint
 
@@ -150,6 +150,77 @@ def draw_confusion(cm: np.ndarray, names: list[str], path: Path):
     im.save(path)
 
 
+def rude_report(names, yt, pt, tvec, other_idx, data, out: Path) -> dict | None:
+    """rude на отложенных рисунках ЛЮДЕЙ (test не участвует ни в обучении, ни в порогах)."""
+    if "rude" not in names:
+        return None
+    r = names.index("rude")
+    src = np.asarray(data.arrays("test")["src"]).astype(np.int64)
+    human_id = data.meta.get("sources", {}).get("human", 1)
+    pred, conf = pt.argmax(1), pt.max(1)
+    acc_r = (pred == r) & (conf >= tvec[r])
+    is_r = yt == r
+    hum_r = is_r & (src == human_id)
+    n_h = int(hum_r.sum())
+    if n_h == 0:
+        return {"human_test": 0}
+
+    def prf(p_mask):
+        tp = int((p_mask & hum_r).sum())
+        fp = int((p_mask & ~is_r).sum())
+        prec = tp / max(1, tp + fp)
+        rec = tp / max(1, n_h)
+        return {"precision": prec, "recall": rec, "f1": 2 * prec * rec / max(1e-12, prec + rec), "tp": tp, "fp": fp}
+
+    res = {"human_test": n_h, "top1": prf(pred == r), "with_threshold": prf(acc_r), "threshold": float(tvec[r])}
+    # кого называют rude и как называют rude
+    called_rude = []
+    for c, n in enumerate(names):
+        if c == r:
+            continue
+        m = yt == c
+        k = int((m & (pred == r)).sum())
+        if k:
+            called_rude.append({"true": n, "count": k, "rate": k / max(1, int(m.sum()))})
+    called_rude.sort(key=lambda d: -d["count"])
+    rude_as = [{"pred": names[c], "count": int((hum_r & (pred == c)).sum())} for c in range(len(names)) if c != r]
+    rude_as = sorted([d for d in rude_as if d["count"]], key=lambda d: -d["count"])
+    res["called_rude"] = called_rude[:10]
+    res["rude_called_as"] = rude_as[:10]
+    # по подтипам (ручная разметка data/custom/rude_subtypes.json, если есть)
+    keys_path = data.root / "test_keys.json"
+    sub_path = ROOT / "data" / "custom" / "rude_subtypes.json"
+    if keys_path.exists() and sub_path.exists():
+        keys = json.loads(keys_path.read_text(encoding="utf-8"))
+        sub = json.loads(sub_path.read_text(encoding="utf-8"))["subtypes"]
+        per = {}
+        for i in np.flatnonzero(hum_r):
+            st = sub.get(keys[i].split(":", 1)[-1], "?")
+            d = per.setdefault(st, [0, 0, 0])
+            d[0] += 1
+            d[1] += int(pred[i] == r)
+            d[2] += int(acc_r[i])
+        res["by_subtype"] = {k: {"n": v[0], "recall_top1": v[1] / v[0], "recall_thr": v[2] / v[0]} for k, v in sorted(per.items())}
+    # картинка ошибок: пропущенные rude и ложные rude
+    try:
+        from PIL import Image
+        imgs = data.images("test")
+        miss = [i for i in np.flatnonzero(hum_r & ~acc_r)][:40]
+        fps = [i for i in np.argsort(-pt[:, r]) if not is_r[i] and acc_r[i]][:40]
+        cell = 66
+        im = Image.new("L", (10 * cell, (4 + 4) * cell + 10), 255)
+        for row0, lst in ((0, miss), (4, fps)):
+            for k, i in enumerate(lst):
+                a = 255 - np.asarray(imgs[i])
+                im.paste(Image.fromarray(a.astype(np.uint8)), ((k % 10) * cell + 1, (row0 + k // 10) * cell + 1 + (10 if row0 else 0)))
+        im = im.resize((im.width * 2, im.height * 2), Image.NEAREST)
+        im.save(out / "rude_errors.png")
+        res["errors_png"] = "rude_errors.png (верх: пропущенные rude людей; низ: ложные rude)"
+    except Exception as e:  # noqa: BLE001
+        res["errors_png"] = f"не нарисовано: {e}"
+    return res
+
+
 def main():
     ap = argparse.ArgumentParser(description="Оценить прогон: test-метрики, калибровка, пороги «узнал / не разобрал».")
     ap.add_argument("--run", required=True, help="каталог runs/<время>")
@@ -199,6 +270,7 @@ def main():
 
     out = run / "eval"
     out.mkdir(exist_ok=True)
+    rude = rude_report(names, yt, pt, tvec, other_idx, data, out)
     draw_confusion(cm, names, out / "confusion.png")
     metrics = {
         "checkpoint": str(run / args.ckpt), "epoch": ck.get("epoch"), "test_size": int(len(yt)),
@@ -206,7 +278,7 @@ def main():
         "ece_raw": ece(pt_raw, yt), "ece_calibrated": ece(pt, yt),
         "per_class": [{"id": n, "precision": float(p), "recall": float(r), "f1": float(f), "support": int(cm[i].sum())}
                       for i, (n, p, r, f) in enumerate(zip(names, prec, rec, f1))],
-        "thresholds": thr, "game_simulation": game,
+        "thresholds": thr, "game_simulation": game, "rude": rude,
     }
     with open(out / "metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
@@ -236,6 +308,17 @@ def main():
               f"- «не разобрал»: {game['target_rejected']:.3f}"]
     if game["other_false_accept"] is not None:
         lines.append(f"- «другое» принято за задание (ложное срабатывание): {game['other_false_accept']:.3f}")
+    if rude and rude.get("human_test"):
+        t1, tw = rude["top1"], rude["with_threshold"]
+        lines += ["", f"## rude на отложенных рисунках людей (test: {rude['human_test']})", "",
+                  "| правило | precision | recall | F1 | TP | FP |", "|---|---|---|---|---|---|",
+                  f"| top-1 | {t1['precision']:.3f} | {t1['recall']:.3f} | {t1['f1']:.3f} | {t1['tp']} | {t1['fp']} |",
+                  f"| top-1 и p ≥ {rude['threshold']:.2f} | {tw['precision']:.3f} | {tw['recall']:.3f} | {tw['f1']:.3f} | {tw['tp']} | {tw['fp']} |",
+                  "", "Кого модель называет rude (test): " + (", ".join(f"{d['true']} {d['count']} ({d['rate']:.1%})" for d in rude["called_rude"]) or "никого"),
+                  "", "Как называет рисунки rude людей: " + (", ".join(f"{d['pred']} {d['count']}" for d in rude["rude_called_as"]) or "всегда rude")]
+        if rude.get("by_subtype"):
+            lines += ["", "| подтип | n | recall top-1 | recall с порогом |", "|---|---|---|---|"]
+            lines += [f"| {k} | {v['n']} | {v['recall_top1']:.2f} | {v['recall_thr']:.2f} |" for k, v in rude["by_subtype"].items()]
     lines += ["", "## Частые путаницы (истинный → предсказанный: число)", ""]
     lines += [f"- {a} → {b}: {n}" for n, a, b in pairs] or ["- нет"]
     (out / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

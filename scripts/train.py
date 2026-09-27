@@ -56,6 +56,8 @@ def main():
     ap.add_argument("--no-amp", action="store_true", help="без смешанной точности (bf16)")
     ap.add_argument("--no-aug", action="store_true", help="без аугментаций (для отладки)")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--source-weights", default=None,
+                    help="вес примера в loss по источнику, напр. synthetic=0.5,human=1 (по умолчанию — из meta.json/конфига)")
     ap.add_argument("--out", default=None, help="каталог прогона (по умолчанию runs/<время>)")
     ap.add_argument("--cpu", action="store_true", help="разрешить обучение на CPU (очень медленно)")
     args = ap.parse_args()
@@ -82,6 +84,18 @@ def main():
         print(f"ВНИМАНИЕ: класс '{cid}' пуст и исключён из модели.")
 
     bank, labels = data.bank("train", dev)
+    src_ids = data.meta.get("sources", {"quickdraw": 0, "human": 1, "synthetic": 2})
+    sw_cfg = {**{"quickdraw": 1.0, "human": 1.0, "synthetic": 1.0}, **data.meta.get("source_loss_weights", {})}
+    if args.source_weights:
+        for kv in args.source_weights.split(","):
+            k, v = kv.split("=")
+            sw_cfg[k.strip()] = float(v)
+    w_table = torch.ones(max(src_ids.values()) + 1, device=dev)
+    for k, i in src_ids.items():
+        w_table[i] = float(sw_cfg.get(k, 1.0))
+    train_src = torch.as_tensor(np.asarray(data.arrays("train")["src"]).astype(np.int64), device=dev)
+    src_count = {k: int((train_src == i).sum()) for k, i in src_ids.items()}
+    print("  источники train: " + ", ".join(f"{k}={src_count[k]} (вес {sw_cfg.get(k, 1.0)})" for k in src_ids))
     vbank, vlabels = data.bank("val", dev)
     labels_np = labels.cpu().numpy()
     sw = np.array([c.get("sampling_weight", 1.0) for c in data.classes])
@@ -125,7 +139,7 @@ def main():
         csv.writer(f).writerow(fields)
 
     best, best_epoch, bad = -1.0, -1, 0
-    ckpt_common = {"model_config": net.config, "classes": data.classes, "preprocess": pre,
+    ckpt_common = {"model_config": net.config, "classes": data.classes, "preprocess": pre, "source_weights": sw_cfg,
                    "data": str(data.root), "args": vars(args)}
     for ep in range(1, args.epochs + 1):
         net.train()
@@ -147,7 +161,8 @@ def main():
                 x = x.contiguous(memory_format=torch.channels_last)
             with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
                 logits = net(x)
-                loss = F.cross_entropy(logits.float(), y, label_smoothing=args.label_smoothing)
+                wt = w_table[train_src[idx]]
+                loss = (F.cross_entropy(logits.float(), y, label_smoothing=args.label_smoothing, reduction="none") * wt).sum() / wt.sum()
             opt.zero_grad(set_to_none=True)
             loss.backward()
             opt.step()

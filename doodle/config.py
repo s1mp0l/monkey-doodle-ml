@@ -25,6 +25,17 @@ class ClassSpec:
     target_precision: float = 0.9
     min_samples: int = 0
     target: int | None = None
+    hard_negatives: list[str] = field(default_factory=list)   # other: «трудные» источники
+    hard_cap: int = 0
+    human_split: dict | None = None      # {test, val, block} — отдельное деление рисунков людей
+    synthetic: dict | None = None        # {file, max_share}
+
+    @property
+    def sources(self) -> list[str]:
+        return self.quickdraw + [q for q in self.hard_negatives if q not in self.quickdraw]
+
+    def cap_for(self, source: str) -> int:
+        return self.hard_cap if source in self.hard_negatives and self.hard_cap else self.cap
 
 
 @dataclass
@@ -37,6 +48,7 @@ class Config:
     split: dict
     custom_dir: Path
     custom_repeat: int
+    source_loss_weights: dict
 
     @property
     def class_ids(self) -> list[str]:
@@ -52,8 +64,8 @@ class Config:
         """Все пары (имя Quick Draw, лимит) для скачивания, без повторов (берётся больший лимит)."""
         caps: dict[str, int] = {}
         for c in self.classes:
-            for q in c.quickdraw:
-                caps[q] = max(caps.get(q, 0), c.cap)
+            for q in c.sources:
+                caps[q] = max(caps.get(q, 0), c.cap_for(q))
         return sorted(caps.items())
 
     def lesson_prompts(self) -> list[dict]:
@@ -89,6 +101,10 @@ def load_config(path: str | os.PathLike | None = None, profile: str | None = Non
             target_precision=float(c.get("target_precision", d.get("target_precision", 0.9))),
             min_samples=int(c.get("min_samples", 0)),
             target=c.get("target"),
+            hard_negatives=list(c.get("hard_negatives") or []),
+            hard_cap=int(c.get("hard_cap", 0)),
+            human_split=c.get("human_split"),
+            synthetic=c.get("synthetic"),
         )
         classes.append(spec)
 
@@ -105,6 +121,8 @@ def load_config(path: str | os.PathLike | None = None, profile: str | None = Non
                     c.quickdraw = c.quickdraw[: int(prof["other_sources"])]
                 if "other_cap" in prof:
                     c.cap = int(prof["other_cap"])
+                if "other_hard_cap" in prof:
+                    c.hard_cap = int(prof["other_hard_cap"])
             elif "cap" in prof:
                 c.cap = int(prof["cap"])
 
@@ -118,4 +136,5 @@ def load_config(path: str | os.PathLike | None = None, profile: str | None = Non
         split=dict(d.get("split", {"val": 5, "test": 5})),
         custom_dir=ROOT / custom.get("dir", "data/custom"),
         custom_repeat=int(custom.get("repeat", 1)),
+        source_loss_weights={"quickdraw": 1.0, "human": 1.0, "synthetic": 1.0, **(raw.get("source_loss_weights") or {})},
     )

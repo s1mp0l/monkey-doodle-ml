@@ -86,6 +86,15 @@ classes:
       mouse, bus, owl, pig, pineapple, pizza, rabbit, scissors, shoe, snake,
       spider, square, squiggle, table, teapot, tent, triangle, truck, t-shirt, zigzag
     ]
+    # «Трудные отрицательные»: классы Quick Draw, похожие на подтипы rude (вытянутые предметы — на фаллос,
+    # два круга — на грудь/яйца, палец/рука — на средний палец, человечки, «слоёные» кучки, вертушки).
+    # Берутся с отдельным, бóльшим лимитом на источник.
+    hard_cap: 4000
+    hard_negatives: [
+      carrot, hot dog, baseball bat, flashlight, lipstick, wine bottle, microphone, marker, lollipop, popsicle,
+      peanut, string bean, syringe, crayon, paintbrush, screwdriver, submarine, sword, toothbrush, asparagus,
+      rifle, finger, hand, yoga, binoculars, birthday cake, tornado, windmill, snowflake, mouth, underwear
+    ]
 
   # ── свой класс: неприличный рисунок; данные только из редактора (data/custom/rude.ndjson)
   - id: rude
@@ -98,6 +107,19 @@ classes:
     sampling_weight: 1.0
     augment: heavy
     target_precision: 0.85
+    # Гигиена оценки: рисунки ЛЮДЕЙ (editor + web) делятся отдельно от синтетики. test — только люди,
+    # не участвуют ни в обучении, ни в подборе порогов; val — люди (подбор порогов, ранняя остановка).
+    # Если авторов > 1 — деление по авторам, иначе — по блокам из `block` рисунков подряд по времени
+    # (серии похожих рисунков не растекаются между train и test).
+    human_split: {test: 25, val: 15, block: 8}
+    # Синтетика (scripts/synth_rude.py → data/synthetic/rude.ndjson) — только в train, не больше
+    # max_share от train-набора класса; loss_weight — вес её примеров в функции потерь.
+    # max_share 0.5: люди не меньше половины уникальных train-рисунков класса (пока нет A/B-сравнения —
+    # см. README); loss_weight синтетики 0.5 — в source_loss_weights ниже.
+    synthetic: {file: data/synthetic/rude.ndjson, max_share: 0.5}
+
+# Вес примера в функции потерь по источнику (quickdraw | human | synthetic); train.py --source-weights
+source_loss_weights: {quickdraw: 1.0, human: 1.0, synthetic: 0.5}
 
 # Профили — подмножества для быстрых прогонов. Любой скрипт: --profile smoke
 profiles:
@@ -106,6 +128,12 @@ profiles:
     cap: 5000               # на класс
     other_sources: 10       # первые N источников other
     other_cap: 1000         # на источник other
+    other_hard_cap: 1000    # на «трудный» источник other
+  # средний: все задания, меньше на класс — для сравнения вариантов обучения за минуты
+  medium:
+    cap: 4000
+    other_cap: 300
+    other_hard_cap: 1500
 
 # Редактор датасета
 editor:

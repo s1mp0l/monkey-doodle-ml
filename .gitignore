@@ -15,3 +15,7 @@ models/
 
 # Vercel CLI (npx vercel link)
 webapp/.vercel/
+
+# отчёты с отрисованными рисунками людей и логи прогонов — не в git
+reports/
+runs_ab_*.log
