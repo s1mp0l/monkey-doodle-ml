@@ -12,8 +12,9 @@ doodle/preprocess.py       КАНОНИЧЕСКАЯ предобработка (
 doodle/gpu_raster.py       та же растеризация батчем на GPU + аугментации на штрихах
 doodle/model.py            DoodleNet: 4×(2 conv3×3-BN-ReLU) → GAP → FC, ~1.2 M параметров
 doodle/data.py, config.py, ndjson_io.py
-scripts/                   download, prepare, train, evaluate, export_onnx, editor, lesson_prompts, make_test_vectors
+scripts/                   download, prepare, train, evaluate, export_onnx, editor, import_contrib, lesson_prompts, make_test_vectors
 editor/                    редактор датасета (http.server + чистый JS)
+webapp/                    публичный сборщик рисунков без бэкенда (статический сайт для Vercel)
 tests/                     pytest + tests/vectors/ (эталон предобработки для порта на C#)
 ```
 
@@ -111,6 +112,47 @@ strokes → нормализация «как Quick Draw simplified» (сдви�
   с порогом класса и картинка «так видит модель».
 - Авторизации нет — `--lan` только в доверенной сети.
 
+## Веб-сборщик рисунков (`webapp/`)
+
+Статический сайт без сервера: участники рисуют `rude` в браузере и присылают вам файл. Та же рисовалка, что во
+вкладке «Рисовать» редактора (мышь/перо/палец, мелок, отмена, Enter, подсказки разнообразия), карточка
+согласия, необязательный ник. Рисунки хранятся в IndexedDB браузера (переживают перезагрузку), есть счётчик
+и галерея своих рисунков с удалением. «Скачать мои рисунки» отдаёт один `.ndjson`
+(`rude_<ник>_<дата>_<N>.ndjson`) в формате записей редактора (`key_id` — UUID, `source: "web"`,
+`simplified` считает JS-порт канонического упрощения — совпадает с `doodle/preprocess.normalize` бит-в-бит,
+проверяется в pytest через node). После отправки — «Очистить отправленные».
+Ни сетевых запросов, ни cookie, ни аналитики; CSP `default-src 'none'`, `connect-src 'none'`.
+
+- Классы — константа `CONFIG.classes` в `webapp/core.js` (сейчас только `rude`; добавьте класс — появится
+  выбор). Там же `CONFIG.sendHint` — куда слать файл.
+- Локально: `.venv\Scripts\python -m http.server 8080 --bind 127.0.0.1 --directory webapp` → http://127.0.0.1:8080
+  (заголовки из `vercel.json` локально не применяются).
+
+### Деплой на Vercel
+
+```powershell
+cd webapp
+npx vercel login          # один раз
+npx vercel                # первый раз: создать проект (framework: Other, build — нет, output — .)
+npx vercel --prod         # публикация
+```
+
+`webapp/vercel.json` — статика без сборки, заголовки безопасности (CSP, `X-Frame-Options: DENY`,
+`Referrer-Policy: no-referrer`, `Permissions-Policy`, `X-Robots-Tag: noindex`).
+
+### Импорт присланных файлов
+
+```powershell
+.venv\Scripts\python scripts/import_contrib.py inbox\            # папка или файлы .ndjson
+.venv\Scripts\python scripts/import_contrib.py inbox\ --dry-run  # только проверить
+```
+
+Проверяет каждую запись (схема, 1–200 штрихов, 2–20000 точек, границы координат и холста, время не убывает,
+≤ 10 мин, не точка), отбрасывает дубли по `key_id` и по хешу координат (в пачке и против уже импортированного),
+ставит `source: "web"`, `contributor`, `imported_at`, пересчитывает `simplified` эталоном и одной атомарной
+дозаписью кладёт в `data/custom/rude.ndjson`. Печатает по каждому файлу: принято / отклонено с причинами.
+Дальше — просмотр в галерее локального редактора (пометить/удалить плохие).
+
 ## В Unity
 
 1. Пакет **Inference Engine** (`com.unity.ai.inference`, бывший Sentis) через Package Manager. Он
@@ -139,4 +181,5 @@ using var probs = (worker.PeekOutput() as Tensor<float>).ReadbackAndClone();
 
 `pytest` — векторы предобработки, совпадение GPU-растеризатора с эталоном, ndjson (конкурентная запись,
 оборванные строки, журнал ревью), редактор через HTTP (сохранение, галерея, ревью, предсказание,
-6 параллельных клиентов), синхронность `lesson_prompts.json` с конфигом.
+6 параллельных клиентов), импорт веб-файлов (валидные, битые, дубли), паритет JS-упрощения с эталоном,
+синхронность `lesson_prompts.json` с конфигом.

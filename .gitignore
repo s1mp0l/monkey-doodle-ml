@@ -12,3 +12,6 @@ models/
 # временное
 *.lock
 *.tmp
+
+# Vercel CLI (npx vercel link)
+webapp/.vercel/

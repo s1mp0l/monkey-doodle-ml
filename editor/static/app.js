@@ -40,7 +40,7 @@ function crayonPattern(ctx, hex, bgRgb) {
   off.width = off.height = S;
   const g = off.getContext("2d"), img = g.createImageData(S, S);
   let seed = 1234567;
-  const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };   // mulberry32
   for (let i = 0; i < S * S; i++) {
     const r = rnd();
     // зерно: большая часть пикселей — цвет мелка, часть — «просвет» бумаги

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e4">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Doodle Lab — рисунки</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <img src="icon.svg" alt="" width="30" height="30">
+    <div><b>Doodle Lab</b><small>сбор рисунков для игры</small></div>
+  </div>
+  <div class="mine" id="mine-count" title="Сохранено в этом браузере">0</div>
+</header>
+
+<main>
+  <!-- ─────────────── вступление / согласие -->
+  <section class="card intro" id="intro" hidden>
+    <h1>Помогите научить игру отличать рисунки</h1>
+    <p>Мы делаем игру про школу, где игроки рисуют мышью. Модель в игре должна распознавать, что
+      нарисовано, — и замечать неприличные каракули, чтобы их не показывать. Для этого нужны примеры таких
+      рисунков от разных людей.</p>
+    <ul>
+      <li>Сохраняются только линии рисунка (координаты и время штрихов) и ник, если вы его укажете. Никаких
+        фото, аккаунтов, cookie и аналитики.</li>
+      <li>Всё хранится <b>только в вашем браузере</b>, пока вы сами не скачаете файл и не отправите его
+        разработчику. Сайт никуда ничего не отправляет.</li>
+      <li>Рисунки пойдут только на обучение модели распознавания. Удалить свои рисунки можно в любой момент
+        (галерея внизу).</li>
+      <li>Участвуют только взрослые.</li>
+    </ul>
+    <label class="field"><span>Ник (необязательно)</span><input id="nick-intro" maxlength="40" placeholder="аноним" autocomplete="nickname"></label>
+    <button class="btn primary big" id="agree" type="button">Понятно, начать рисовать</button>
+  </section>
+
+  <!-- ─────────────── рисование -->
+  <section id="draw" hidden>
+    <div class="task card">
+      <div class="task-row">
+        <div class="task-main">Нарисуй: <b id="word">…</b></div>
+        <div class="counter"><b id="count">0</b><span>/ <span id="target">0</span></span></div>
+      </div>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="task-var">
+        <span class="chip" id="prompt">…</span>
+        <button id="newprompt" class="link" type="button">другая подсказка</button>
+      </div>
+      <label class="field class-field" id="class-field" hidden><span>Класс</span><select id="cls"></select></label>
+    </div>
+
+    <div class="paper-wrap">
+      <canvas id="canvas" class="paper" aria-label="Холст для рисования"></canvas>
+      <div class="hint" id="hint">Рисуйте мышью, пером или пальцем</div>
+    </div>
+
+    <div class="under">
+      <div class="colors" id="colors" aria-label="Цвет мелка"></div>
+      <div class="seg" id="format" role="group" aria-label="Формат листа">
+        <button data-f="square" class="on" type="button">квадрат</button><button data-f="sheet" type="button">лист</button><button data-f="board" type="button">доска</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="undo" class="btn" type="button">Отменить <kbd>Ctrl+Z</kbd></button>
+      <button id="clear" class="btn" type="button">Очистить <kbd>Esc</kbd></button>
+      <button id="skip" class="btn" type="button">Пропустить</button>
+      <button id="save" class="btn primary" type="button" disabled>Сохранить <kbd>Enter</kbd></button>
+    </div>
+    <p class="note">Рисуйте по-разному — следуйте подсказке под заданием. Один рисунок — одна штука.</p>
+
+    <!-- ─────────────── отправка -->
+    <div class="card send">
+      <h2>Отправить разработчику</h2>
+      <div class="send-row">
+        <label class="field grow"><span>Ник (попадёт в файл)</span><input id="nick" maxlength="40" placeholder="аноним" autocomplete="nickname"></label>
+        <button class="btn primary" id="export" type="button" disabled>Скачать мои рисунки</button>
+      </div>
+      <p class="send-hint" id="send-hint"></p>
+      <p class="send-status" id="send-status"></p>
+      <button class="btn danger small" id="clear-sent" type="button" hidden>Очистить отправленные</button>
+    </div>
+
+    <!-- ─────────────── галерея -->
+    <div class="gal-head">
+      <h2>Мои рисунки <span class="muted" id="gal-count"></span></h2>
+      <button class="link" id="gal-toggle" type="button">показать</button>
+    </div>
+    <div class="grid" id="grid" hidden></div>
+    <p class="empty" id="gal-empty" hidden>Пока ничего нет.</p>
+  </section>
+
+  <p class="foot">Хранилище: только этот браузер (IndexedDB). <button class="link" id="show-intro" type="button">Что это и зачем?</button></p>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="core.js"></script>
+<script src="sketch.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
