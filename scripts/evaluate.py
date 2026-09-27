@@ -221,6 +221,34 @@ def rude_report(names, yt, pt, tvec, other_idx, data, out: Path) -> dict | None:
     return res
 
 
+def composite_report(names, T, tvec, other_idx, data, dev) -> dict | None:
+    """Отдельный набор ctest: композиции. obscene recall на композициях с rude vs одиночные (test),
+    и доля ложных rude на безобидных композициях (метка other)."""
+    if "rude" not in names or not (data.root / "ctest_images.npy").exists():
+        return None
+    from doodle.model import load_checkpoint  # noqa: F401  (net уже загружен снаружи через logits_for; здесь через сохранённый)
+    r = names.index("rude")
+    imgs = data.images("ctest")
+    if len(imgs) == 0:
+        return None
+    yc = np.asarray(data.arrays("ctest")["label"]).astype(np.int64)
+    net = composite_report.net                     # передаётся из main
+    lc = logits_for(net, imgs, dev)
+    pc = softmax(lc, T)
+    pred, conf = pc.argmax(1), pc.max(1)
+    flagged = (pred == r) & (conf >= tvec[r])
+    is_rude = yc == r
+    res = {"n": int(len(yc)), "rude_composites": int(is_rude.sum()), "benign_composites": int((~is_rude).sum())}
+    if is_rude.any():
+        res["rude_recall"] = float((flagged & is_rude).sum() / is_rude.sum())
+    if (~is_rude).any():
+        res["benign_false_rude"] = float((flagged & ~is_rude).sum() / (~is_rude).sum())
+        # на что модель принимает безобидные композиции
+        b = pred[~is_rude]
+        res["benign_pred"] = {names[c]: int((b == c).sum()) for c in np.unique(b)}
+    return res
+
+
 def main():
     ap = argparse.ArgumentParser(description="Оценить прогон: test-метрики, калибровка, пороги «узнал / не разобрал».")
     ap.add_argument("--run", required=True, help="каталог runs/<время>")
@@ -234,6 +262,7 @@ def main():
         run = ROOT / run
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net, ck = load_checkpoint(run / args.ckpt, dev)
+    composite_report.net = net
     data = PreparedData(args.data or ck["data"])
     classes = ck["classes"]
     names = [c["id"] for c in classes]
@@ -271,6 +300,7 @@ def main():
     out = run / "eval"
     out.mkdir(exist_ok=True)
     rude = rude_report(names, yt, pt, tvec, other_idx, data, out)
+    comp = composite_report(names, T, tvec, other_idx, data, dev)
     draw_confusion(cm, names, out / "confusion.png")
     metrics = {
         "checkpoint": str(run / args.ckpt), "epoch": ck.get("epoch"), "test_size": int(len(yt)),
@@ -278,7 +308,7 @@ def main():
         "ece_raw": ece(pt_raw, yt), "ece_calibrated": ece(pt, yt),
         "per_class": [{"id": n, "precision": float(p), "recall": float(r), "f1": float(f), "support": int(cm[i].sum())}
                       for i, (n, p, r, f) in enumerate(zip(names, prec, rec, f1))],
-        "thresholds": thr, "game_simulation": game, "rude": rude,
+        "thresholds": thr, "game_simulation": game, "rude": rude, "composites": comp,
     }
     with open(out / "metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
@@ -319,6 +349,15 @@ def main():
         if rude.get("by_subtype"):
             lines += ["", "| подтип | n | recall top-1 | recall с порогом |", "|---|---|---|---|"]
             lines += [f"| {k} | {v['n']} | {v['recall_top1']:.2f} | {v['recall_thr']:.2f} |" for k, v in rude["by_subtype"].items()]
+    if comp:
+        lines += ["", f"## Композиции (ctest: {comp['n']}) — синтетические, НЕ рисунки людей", ""]
+        if "rude_recall" in comp:
+            lines.append(f"- rude на композициях с непристойным ({comp['rude_composites']}): recall {comp['rude_recall']:.3f} "
+                         f"(одиночные rude людей: {rude['with_threshold']['recall']:.3f})" if rude and rude.get("human_test") else
+                         f"- rude на композициях с непристойным: recall {comp['rude_recall']:.3f}")
+        if "benign_false_rude" in comp:
+            lines.append(f"- безобидные композиции ({comp['benign_composites']}) ложно помечены rude: {comp['benign_false_rude']:.3f}"
+                         + (f"; принимаются как: {comp['benign_pred']}" if comp.get('benign_pred') else ""))
     lines += ["", "## Частые путаницы (истинный → предсказанный: число)", ""]
     lines += [f"- {a} → {b}: {n}" for n, a, b in pairs] or ["- нет"]
     (out / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -171,10 +171,68 @@ npx vercel --prod         # публикация
   Синтетика — только в train, не больше `max_share` (сейчас 0.5, т. е. люди ≥ половины) уникальных рисунков
   класса; `--no-synthetic` / `--max-synthetic-share` для A/B. `train.py` взвешивает loss по источнику
   (`source_loss_weights`, `--source-weights synthetic=0.5`).
+- **Аугментация людей** (`scripts/augment_rude.py` → `data/augmented/rude.ndjson`): по каждому рисунку человека
+  варианты — заливка (штриховка/каракули/спираль/крест, кроме надписей и символов), реальные размеры на
+  холсте tiny/small/medium/huge (меняют плотность точек и RDP), повороты/сдвиг/дрожание, выкидывание и
+  перестановка штрихов; для надписей ещё межбуквенный интервал и наклон/волна строки. У редких подтипов
+  вариантов больше. Split берётся у родителя — дети test/val-родителей в train не попадают.
+- **Композиции** (`data/augmented/rude_composites.ndjson` → rude, `other_composites.ndjson` → other):
+  непристойный рисунок (человек или синтетика) + 1–3 обычных объекта Quick Draw → метка rude (главный объект
+  ≥ 30 % большей стороны, надписи ≥ 40 % ширины, доля мелких ограничена); 2–4 обычных объекта без непристойного
+  → метка other. Правило меток: у безобидных композиций всегда `other` (объекты сопоставимого размера, масштабы
+  0.7–1.3, поэтому доминирующего объекта-задания нет); ~20 % композиций помечены `ctest` и идут в отдельный
+  набор для оценки, не в train.
+- **Балансировка подтипов rude** (`subtype_balance.target`): синтетика+аугментация каждого подтипа урезается,
+  чтобы подтип не превышал target уникальных train-рисунков (люди не режутся) — иначе 6000 синтетических
+  фаллосов заглушили бы слова и свастики. `subtype` хранится в записях как метаданные; модель — один класс `rude`.
 - В `other` добавлены «трудные отрицательные» (`hard_negatives`, свой `hard_cap`): морковь, хот-дог, бита,
   фонарик, помада, бутылка, микрофон, маркер, леденец, эскимо, арахис, стручок, шприц, мелок, кисть, отвёртка,
   подлодка, меч, зубная щётка, спаржа, ружьё, палец, рука, йога, бинокль, торт, торнадо, мельница, снежинка,
   рот, трусы. Профиль `medium` — все задания по 4000 + other + rude (для быстрых сравнений).
+
+## Полное обучение — по шагам
+
+Одной командой (лог в `runs/<ts>/full_run.log`, останавливается на первой ошибке):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\full_run.ps1
+# заново пересобрать синтетику/аугментацию/композиции:  -Regen
+# пропустить скачивание, если Quick Draw уже на диске:    -SkipDownload
+```
+
+То же вручную, с чистого состояния (PowerShell, из корня проекта):
+
+```powershell
+py -3.11 -m venv .venv
+.venv\Scripts\python -m pip install --upgrade pip
+.venv\Scripts\python -m pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cu132
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -c "import torch;print(torch.cuda.is_available(),torch.cuda.get_device_name(0))"
+
+# 1. Quick Draw (резюмируемо): ~0.4 ГБ чтения, ~0.38 ГБ на диске, минуты
+.venv\Scripts\python scripts/download.py
+# 2. Синтетика rude и аугментация/композиции — если их ещё нет на диске (иначе пропустить):
+.venv\Scripts\python scripts/synth_rude.py --calibrate data/custom/rude.ndjson -n 6000 --seed 1   # ~4 мин, ~59 МБ
+.venv\Scripts\python scripts/augment_rude.py                                                        # ~2 мин, ~30 МБ
+# 3. Подготовка полного профиля (Quick Draw + люди + синтетика/аугментация/композиции с лимитами)
+.venv\Scripts\python scripts/prepare.py --profile full      # ~2–3 мин, ~1.5 ГБ в data/prepared/full
+# 4. Обучение (RTX 4060 Ti: ~2.5 мин/эпоха, 30 эпох ≈ 60–75 мин; ранняя остановка обычно раньше)
+.venv\Scripts\python scripts/train.py --data data/prepared/full --epochs 30 --batch 512
+# 5. Оценка и 6. экспорт
+.venv\Scripts\python scripts/evaluate.py --run runs/<ts>
+.venv\Scripts\python scripts/export_onnx.py --run runs/<ts>     # → models/<ts>/ и models/latest/
+```
+
+В `runs/<ts>/eval/report.md` смотреть: **rude precision/recall/F1 на отложенных рисунках людей**
+(test — только люди, не участвует ни в обучении, ни в порогах), **recall по подтипам** (phallus / word /
+swastika / body / poop / butt / hate / finger), **частые путаницы** (какие задания зовут rude и наоборот),
+**композиции** (recall rude на составных рисунках и **доля ложных rude на безобидных композициях**),
+матрицу ошибок `confusion.png` и картинку ошибок `eval/rude_errors.png`.
+
+Прерывание: `download.py` докачивает с места (состояние в `data/raw/quickdraw/*.state.json`) — просто
+запустить снова. Остальные шаги переписывают свой выход, поэтому повторный запуск шага безопасен;
+`full_run.ps1` начинать заново (он не возобновляет с середины, но пропустит скачанное и, без `-Regen`,
+не трогает уже сгенерированную синтетику).
 
 ## В Unity
 

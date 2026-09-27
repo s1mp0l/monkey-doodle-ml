@@ -29,6 +29,9 @@ class ClassSpec:
     hard_cap: int = 0
     human_split: dict | None = None      # {test, val, block} — отдельное деление рисунков людей
     synthetic: dict | None = None        # {file, max_share}
+    augmented: dict | None = None        # {file} — офлайн-аугментация рисунков людей (train, split родителя)
+    composites: dict | None = None       # {rude, other} — файлы композиций по целевым классам
+    subtype_balance: dict | None = None  # {target} — предел синтетика+аугментация на подтип
 
     @property
     def sources(self) -> list[str]:
@@ -105,6 +108,9 @@ def load_config(path: str | os.PathLike | None = None, profile: str | None = Non
             hard_cap=int(c.get("hard_cap", 0)),
             human_split=c.get("human_split"),
             synthetic=c.get("synthetic"),
+            augmented=c.get("augmented"),
+            composites=c.get("composites"),
+            subtype_balance=c.get("subtype_balance"),
         )
         classes.append(spec)
 

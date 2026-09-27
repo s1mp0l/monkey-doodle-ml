@@ -30,7 +30,22 @@ from doodle.config import load_config
 from doodle.ndjson_io import custom_samples, iter_records
 
 SPLITS = ("train", "val", "test")
-SRC_QD, SRC_HUMAN, SRC_SYN = 0, 1, 2
+CTEST = "ctest"                              # композиции для отдельной оценки (не train/val/test)
+ALL_SPLITS = SPLITS + (CTEST,)
+SRC_QD, SRC_HUMAN, SRC_SYN, SRC_AUG, SRC_COMPOSITE = 0, 1, 2, 3, 4
+SUBTYPES_PATH = "data/custom/rude_subtypes.json"
+SRC_NAMES = {0: "quickdraw", 1: "human", 2: "synthetic", 3: "augmented", 4: "composite"}
+
+
+def _subtype_of(rec, human_subtypes):
+    if rec is None:
+        return None
+    src = rec.get("source")
+    if src == "synthetic":
+        return "phallus"
+    if src in ("augmented", "composite"):
+        return rec.get("subtype")
+    return human_subtypes.get(rec.get("key_id"))
 
 
 def human_split(items: list[tuple[str, dict]], cfg: dict) -> dict[str, str]:
@@ -139,6 +154,12 @@ def main():
                 syn = [r for r in iter_records(syn_path) if r.get("drawing")]
                 items += [(f"syn:{r['key_id']}", r["drawing"], SRC_SYN, r) for r in syn]
                 print(f"  {spec.id}: синтетики в файле {len(syn)} ({syn_path.name})")
+        if spec.augmented and not args.no_synthetic:
+            ap = ROOT / spec.augmented["file"]
+            if ap.exists():
+                a = [r for r in iter_records(ap) if r.get("drawing")]
+                items += [(f"aug:{r['key_id']}", r["drawing"], SRC_AUG, r) for r in a]
+                print(f"  {spec.id}: аугментаций в файле {len(a)} ({ap.name})")
         if not items:
             warn(f"класс '{spec.id}' пуст — исключён из обучения" +
                  (f" (соберите рисунки в редакторе: data/custom/{spec.id}.ndjson)" if spec.kind == "custom" else ""))
@@ -149,6 +170,24 @@ def main():
                  f"модель будет ненадёжна на нём (нужно больше данных)")
         per_class.append((spec, items))
 
+    human_subtypes = {}
+    sp_path = ROOT / SUBTYPES_PATH
+    if sp_path.exists():
+        human_subtypes = json.loads(sp_path.read_text(encoding="utf-8")).get("subtypes", {})
+    class_idx = {sp.id: i for i, (sp, _) in enumerate(per_class)}
+    if not args.no_synthetic:
+        for spec, _ in list(per_class):
+            for target_id, rel in (spec.composites or {}).items():
+                if target_id not in class_idx:
+                    continue
+                cp = ROOT / rel
+                if not cp.exists():
+                    continue
+                recs = [r for r in iter_records(cp) if r.get("drawing")]
+                per_class[class_idx[target_id]][1].extend(
+                    (f"comp:{r['key_id']}", r["drawing"], SRC_COMPOSITE, r) for r in recs)
+                print(f"  {target_id}: композиций из {cp.name}: {len(recs)}")
+
     if len(per_class) < 2:
         sys.exit("Меньше двух непустых классов — обучать нечего.")
 
@@ -156,33 +195,99 @@ def main():
     print(f"Классов: {len(classes)}; сбор за {time.time() - t0:.1f} с")
 
     # ── нормализация (параллельно)
-    # ── split: люди отдельно (по авторам / блокам по времени), синтетика — только train, с лимитом доли
+    # ── split: люди отдельно (по авторам / блокам времени); синтетика/аугментация/композиции — только train
+    # (или ctest для помеченных композиций), с лимитом доли синтетики и балансировкой подтипов.
     split_override: dict[str, str] = {}
     source_counts: dict[str, dict] = {}
+    rng = np.random.default_rng(0)
     for ci, (spec, items) in enumerate(per_class):
-        if not spec.human_split:
-            continue
         hum = [(key, rec) for key, _, src, rec in items if src == SRC_HUMAN]
-        split_override.update(human_split(hum, spec.human_split))
-        n_hum_train = sum(1 for key, _ in hum if split_override[key] == "train")
-        syn = [it for it in items if it[2] == SRC_SYN]
+        if spec.human_split:
+            hsplit = human_split(hum, spec.human_split)
+            split_override.update(hsplit)
+        else:
+            hsplit = {}
+        drop: set[str] = set()
+
+        # аугментация: split родителя; дети test/val-родителей НЕ идут в train — выкидываются
+        for key, _, src, rec in items:
+            if src == SRC_AUG:
+                par = rec.get("parent")
+                psp = hsplit.get(f"custom:{par}") or split_override.get(f"custom:{par}")
+                if psp == "train":
+                    split_override[key] = "train"
+                else:
+                    drop.add(key)
+
+        # композиции: split_hint train → train, ctest → отдельный набор ctest
+        for key, _, src, rec in items:
+            if src == SRC_COMPOSITE:
+                split_override[key] = CTEST if rec.get("split_hint") == "ctest" else "train"
+
+        # синтетика → train
+        for key, _, src, rec in items:
+            if src == SRC_SYN:
+                split_override[key] = "train"
+
+        # балансировка подтипов: синтетика+аугментация каждого подтипа урезается до target − люди(train)
+        if spec.subtype_balance:
+            target = int(spec.subtype_balance.get("target", 800))
+            hum_train_by = {}
+            for key, rec in hum:
+                if split_override.get(key) == "train":
+                    st = _subtype_of(rec, human_subtypes)
+                    hum_train_by[st] = hum_train_by.get(st, 0) + 1
+            by_sub: dict = {}
+            for key, _, src, rec in items:
+                if src in (SRC_SYN, SRC_AUG) and split_override.get(key) == "train":
+                    by_sub.setdefault(_subtype_of(rec, human_subtypes), []).append(key)
+            for st, keys in by_sub.items():
+                allow = max(0, target - hum_train_by.get(st, 0))
+                if len(keys) > allow:
+                    ki = rng.permutation(len(keys))[allow:]
+                    drop.update(keys[j] for j in ki)
+
+        # общий лимит доли синтетики (после балансировки) — на остаток синтетики
+        n_hum_train = sum(1 for key, _ in hum if split_override.get(key) == "train")
+        syn_keys = [key for key, _, src, _ in items if src == SRC_SYN and key not in drop and split_override.get(key) == "train"]
         share = float((spec.synthetic or {}).get("max_share", 0.75)) if args.max_synthetic_share is None \
             else args.max_synthetic_share
-        limit = int(share / max(1e-9, 1 - share) * n_hum_train) if share < 1 else len(syn)
-        if len(syn) > limit:
-            rng = np.random.default_rng(0)
-            keep = set(rng.choice(len(syn), limit, replace=False).tolist())
-            drop = {syn[k][0] for k in range(len(syn)) if k not in keep}
+        limit = int(share / max(1e-9, 1 - share) * max(1, n_hum_train)) if share < 1 else len(syn_keys)
+        if len(syn_keys) > limit:
+            ki = rng.permutation(len(syn_keys))[limit:]
+            drop.update(syn_keys[j] for j in ki)
+
+        if drop:
             per_class[ci] = (spec, [it for it in items if it[0] not in drop])
-            print(f"  {spec.id}: синтетики беру {limit} из {len(syn)} (≤ {share:.0%} train-набора класса)")
-            syn = [syn[k] for k in sorted(keep)]
-        for key, *_ in syn:
-            split_override[key] = "train"
-        hs = {s: sum(1 for key, _ in hum if split_override[key] == s) for s in SPLITS}
-        source_counts[spec.id] = {"human": hs, "synthetic_train": len(syn)}
-        print(f"  {spec.id}: люди train/val/test = {hs['train']}/{hs['val']}/{hs['test']}, синтетика train = {len(syn)}")
-        if hs["test"] == 0:
-            warn(f"{spec.id}: нет рисунков людей в test — оценка на людях невозможна")
+        items = per_class[ci][1]
+        # учёт
+        hs = {s: sum(1 for key, _, src, _ in items if src == SRC_HUMAN and split_override.get(key, split_of(key, val_pct, test_pct)) == s) for s in SPLITS}
+        by_src = {}
+        for key, _, src, rec in items:
+            sp = split_override.get(key) or split_of(key, val_pct, test_pct)
+            by_src.setdefault((SRC_NAMES[src], sp), 0)
+            by_src[(SRC_NAMES[src], sp)] += 1
+        if spec.human_split or spec.subtype_balance:
+            sc = {"human": hs}
+            sc["synthetic_train"] = by_src.get(("synthetic", "train"), 0)
+            sc["augmented_train"] = by_src.get(("augmented", "train"), 0)
+            sc["composite_train"] = by_src.get(("composite", "train"), 0)
+            sc["composite_ctest"] = by_src.get(("composite", CTEST), 0)
+            if spec.subtype_balance:
+                stc = {}
+                for key, _, src, rec in items:
+                    if split_override.get(key) == "train" and src in (SRC_HUMAN, SRC_SYN, SRC_AUG):
+                        st = _subtype_of(rec, human_subtypes) or "?"
+                        stc[st] = stc.get(st, 0) + 1
+                sc["train_by_subtype"] = dict(sorted(stc.items(), key=lambda kv: -kv[1]))
+            source_counts[spec.id] = sc
+            print(f"  {spec.id}: люди tr/val/test={hs['train']}/{hs['val']}/{hs['test']}, "
+                  f"синт train={sc['synthetic_train']}, ауг train={sc['augmented_train']}, "
+                  f"композ train={sc['composite_train']}/ctest={sc['composite_ctest']}")
+            if spec.subtype_balance:
+                print(f"    подтипы train: {sc['train_by_subtype']}")
+            if hs["test"] == 0 and spec.kind == "custom":
+                warn(f"{spec.id}: нет рисунков людей в test — оценка на людях невозможна")
 
     flat = [(ci, key, d, src) for ci, (_, items) in enumerate(per_class) for key, d, src, _ in items]
     t0 = time.time()
@@ -193,8 +298,8 @@ def main():
     print(f"Нормализовано {len(flat):,} рисунков за {time.time() - t0:.1f} с")
 
     # ── раскладка по split
-    buckets = {s: {"pts": [], "sid": [], "len": [], "label": [], "src": [], "draw": []} for s in SPLITS}
-    counts = {s: [0] * len(classes) for s in SPLITS}
+    buckets = {s: {"pts": [], "sid": [], "len": [], "label": [], "src": [], "draw": []} for s in ALL_SPLITS}
+    counts = {s: [0] * len(classes) for s in ALL_SPLITS}
     skipped = 0
     for (ci, key, _, src), nd in zip(flat, normed):
         if not nd:
@@ -220,7 +325,7 @@ def main():
         print(f"  пустых после нормализации: {skipped}")
 
     t0 = time.time()
-    for sp in SPLITS:
+    for sp in ALL_SPLITS:
         b = buckets[sp]
         lens = np.asarray(b["len"], np.int32)
         starts = np.zeros(len(lens), np.int64)
@@ -249,10 +354,11 @@ def main():
         "preprocess": {"epsilon": eps, "size": size, "pad": pad, "line_width": lw, "scale_max": pp.SCALE_MAX},
         "split_pct": {"val": val_pct, "test": test_pct},
         "custom_repeat": cfg.custom_repeat,
-        "sources": {"quickdraw": SRC_QD, "human": SRC_HUMAN, "synthetic": SRC_SYN},
+        "sources": {k: v for v, k in SRC_NAMES.items()},
         "source_loss_weights": cfg.source_loss_weights,
         "source_counts": source_counts,
         "synthetic_used": not args.no_synthetic,
+        "ctest_size": int(sum(counts[CTEST])),
         "classes": [{
             "id": s.id, "ru": s.ru, "kind": s.kind, "quickdraw": s.quickdraw, "task": s.task, "ru_acc": s.ru_acc,
             "sampling_weight": s.sampling_weight, "augment": s.augment, "target_precision": s.target_precision,

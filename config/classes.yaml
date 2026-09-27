@@ -117,6 +117,14 @@ classes:
     # max_share 0.5: люди не меньше половины уникальных train-рисунков класса (пока нет A/B-сравнения —
     # см. README); loss_weight синтетики 0.5 — в source_loss_weights ниже.
     synthetic: {file: data/synthetic/rude.ndjson, max_share: 0.5}
+    # Аугментация рисунков людей (scripts/augment_rude.py) — только в train, split берётся у родителя
+    # (дети test/val-родителей не идут в train). Композиции rude/other — отдельными файлами.
+    augmented: {file: data/augmented/rude.ndjson}
+    composites: {rude: data/augmented/rude_composites.ndjson, other: data/augmented/other_composites.ndjson}
+    # Балансировка подтипов внутри rude: синтетика+аугментация каждого подтипа урезается так, чтобы
+    # подтип не превышал subtype_target УНИКАЛЬНЫХ train-рисунков (люди не режутся). Иначе 6000 фаллосов
+    # заглушили бы слова/свастики. Композиции сюда не входят (они — отдельная «форма», не подтип).
+    subtype_balance: {target: 800}
 
 # Вес примера в функции потерь по источнику (quickdraw | human | synthetic); train.py --source-weights
 source_loss_weights: {quickdraw: 1.0, human: 1.0, synthetic: 0.5}
