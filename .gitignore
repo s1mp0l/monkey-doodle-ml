@@ -1,0 +1,14 @@
+# окружение
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# данные и модели — не в git (Quick Draw, свои рисунки, подготовленные тензоры)
+data/
+runs/
+models/
+
+# временное
+*.lock
+*.tmp

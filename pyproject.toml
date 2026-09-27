@@ -1,0 +1,10 @@
+[project]
+name = "monkey-doodle-ml"
+version = "0.1.0"
+description = "Классификатор рисунков для Monkey School: Quick Draw + свои данные → ONNX для Unity Inference Engine"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:torch.*", "ignore:You are using the legacy TorchScript-based ONNX export:DeprecationWarning"]

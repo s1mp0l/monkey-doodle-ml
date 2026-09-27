@@ -1,0 +1,9 @@
+# PyTorch ставится ОТДЕЛЬНО, сборка с CUDA (см. README → «Установка»):
+#   .venv\Scripts\python -m pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cu132
+# Проверено: драйвер NVIDIA 610.74 (CUDA 13.3), RTX 4060 Ti, torch 2.14.0+cu132, Python 3.11.
+numpy==2.4.6
+pillow==12.3.0          # только матрица ошибок в evaluate.py
+pyyaml==6.0.3
+onnx==1.23.0
+onnxruntime==1.30.0     # паритет при экспорте и вкладка «Тест» редактора
+pytest==9.1.1

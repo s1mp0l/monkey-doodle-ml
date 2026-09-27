@@ -1,0 +1,1 @@
+{"name": "dot_n32", "about": "один штрих из одной точки (тычок)", "params": {"epsilon": 2.0, "size": 32, "pad": 1.0, "line_width": 1.5}, "input": [[[10], [20]]], "simplified": [[[0], [0]]]}

@@ -1,0 +1,191 @@
+{
+  "about": "Задания урока рисования (классы Quick, Draw!). Генерируется scripts/lesson_prompts.py из config/classes.yaml (task: true) — не править руками.",
+  "prompts": [
+    {
+      "id": "banana",
+      "quickdraw": "banana",
+      "ru": "Банан",
+      "ru_acc": "банан"
+    },
+    {
+      "id": "sun",
+      "quickdraw": "sun",
+      "ru": "Солнце",
+      "ru_acc": "солнце"
+    },
+    {
+      "id": "house",
+      "quickdraw": "house",
+      "ru": "Домик",
+      "ru_acc": "домик"
+    },
+    {
+      "id": "fish",
+      "quickdraw": "fish",
+      "ru": "Рыбка",
+      "ru_acc": "рыбку"
+    },
+    {
+      "id": "apple",
+      "quickdraw": "apple",
+      "ru": "Яблоко",
+      "ru_acc": "яблоко"
+    },
+    {
+      "id": "tree",
+      "quickdraw": "tree",
+      "ru": "Дерево",
+      "ru_acc": "дерево"
+    },
+    {
+      "id": "flower",
+      "quickdraw": "flower",
+      "ru": "Цветок",
+      "ru_acc": "цветок"
+    },
+    {
+      "id": "cat",
+      "quickdraw": "cat",
+      "ru": "Кошка",
+      "ru_acc": "кошку"
+    },
+    {
+      "id": "car",
+      "quickdraw": "car",
+      "ru": "Машина",
+      "ru_acc": "машину"
+    },
+    {
+      "id": "star",
+      "quickdraw": "star",
+      "ru": "Звезда",
+      "ru_acc": "звезду"
+    },
+    {
+      "id": "moon",
+      "quickdraw": "moon",
+      "ru": "Луна",
+      "ru_acc": "луну"
+    },
+    {
+      "id": "cloud",
+      "quickdraw": "cloud",
+      "ru": "Облако",
+      "ru_acc": "облако"
+    },
+    {
+      "id": "umbrella",
+      "quickdraw": "umbrella",
+      "ru": "Зонтик",
+      "ru_acc": "зонтик"
+    },
+    {
+      "id": "clock",
+      "quickdraw": "clock",
+      "ru": "Часы",
+      "ru_acc": "часы"
+    },
+    {
+      "id": "eyeglasses",
+      "quickdraw": "eyeglasses",
+      "ru": "Очки",
+      "ru_acc": "очки"
+    },
+    {
+      "id": "ice_cream",
+      "quickdraw": "ice cream",
+      "ru": "Мороженое",
+      "ru_acc": "мороженое"
+    },
+    {
+      "id": "butterfly",
+      "quickdraw": "butterfly",
+      "ru": "Бабочка",
+      "ru_acc": "бабочку"
+    },
+    {
+      "id": "snowman",
+      "quickdraw": "snowman",
+      "ru": "Снеговик",
+      "ru_acc": "снеговика"
+    },
+    {
+      "id": "bicycle",
+      "quickdraw": "bicycle",
+      "ru": "Велосипед",
+      "ru_acc": "велосипед"
+    },
+    {
+      "id": "airplane",
+      "quickdraw": "airplane",
+      "ru": "Самолёт",
+      "ru_acc": "самолёт"
+    },
+    {
+      "id": "sailboat",
+      "quickdraw": "sailboat",
+      "ru": "Кораблик",
+      "ru_acc": "кораблик"
+    },
+    {
+      "id": "key",
+      "quickdraw": "key",
+      "ru": "Ключ",
+      "ru_acc": "ключ"
+    },
+    {
+      "id": "pencil",
+      "quickdraw": "pencil",
+      "ru": "Карандаш",
+      "ru_acc": "карандаш"
+    },
+    {
+      "id": "mushroom",
+      "quickdraw": "mushroom",
+      "ru": "Гриб",
+      "ru_acc": "гриб"
+    },
+    {
+      "id": "rainbow",
+      "quickdraw": "rainbow",
+      "ru": "Радуга",
+      "ru_acc": "радугу"
+    },
+    {
+      "id": "snail",
+      "quickdraw": "snail",
+      "ru": "Улитка",
+      "ru_acc": "улитку"
+    },
+    {
+      "id": "smiley_face",
+      "quickdraw": "smiley face",
+      "ru": "Смайлик",
+      "ru_acc": "смайлик"
+    },
+    {
+      "id": "candle",
+      "quickdraw": "candle",
+      "ru": "Свеча",
+      "ru_acc": "свечу"
+    },
+    {
+      "id": "envelope",
+      "quickdraw": "envelope",
+      "ru": "Конверт",
+      "ru_acc": "конверт"
+    },
+    {
+      "id": "guitar",
+      "quickdraw": "guitar",
+      "ru": "Гитара",
+      "ru_acc": "гитару"
+    },
+    {
+      "id": "octopus",
+      "quickdraw": "octopus",
+      "ru": "Осьминог",
+      "ru_acc": "осьминога"
+    }
+  ]
+}

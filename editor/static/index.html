@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e4">
+<title>Doodle Lab</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <img src="/static/icon.svg" alt="" width="30" height="30">
+    <div><b>Doodle Lab</b><small>датасет рисунков · Monkey School</small></div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="draw" class="on">Рисовать</button>
+    <button role="tab" data-tab="gallery">Галерея</button>
+    <button role="tab" data-tab="test">Тест</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ─────────────── Рисовать -->
+  <section id="tab-draw" class="tab on">
+    <div class="toolbar">
+      <label class="field grow"><span>Класс</span><select id="d-class"></select></label>
+      <label class="field grow"><span>Автор</span><input id="d-author" placeholder="Ваше имя" maxlength="40" autocomplete="nickname"></label>
+    </div>
+
+    <div class="task card">
+      <div class="task-row">
+        <div class="task-main">Нарисуй: <b id="d-word">…</b></div>
+        <div class="counter"><b id="d-count">0</b><span>/ <span id="d-target">0</span></span></div>
+      </div>
+      <div class="bar"><i id="d-bar"></i></div>
+      <div class="task-var">
+        <span class="chip" id="d-prompt">…</span>
+        <button id="d-newprompt" class="link" type="button">другая подсказка</button>
+      </div>
+    </div>
+
+    <div class="paper-wrap" id="d-wrap">
+      <canvas id="d-canvas" class="paper" aria-label="Холст для рисования"></canvas>
+      <div class="hint" id="d-hint">Рисуйте мышью, пером или пальцем</div>
+    </div>
+
+    <div class="under">
+      <div class="colors" id="d-colors" aria-label="Цвет мелка"></div>
+      <div class="seg" id="d-format" role="group" aria-label="Формат листа">
+        <button data-f="square" class="on">квадрат</button><button data-f="sheet">лист</button><button data-f="board">доска</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="d-undo" class="btn" type="button">Отменить <kbd>Ctrl+Z</kbd></button>
+      <button id="d-clear" class="btn" type="button">Очистить <kbd>Esc</kbd></button>
+      <button id="d-skip" class="btn" type="button">Пропустить</button>
+      <button id="d-save" class="btn primary" type="button" disabled>Сохранить <kbd>Enter</kbd></button>
+    </div>
+    <p class="note" id="d-note"></p>
+  </section>
+
+  <!-- ─────────────── Галерея -->
+  <section id="tab-gallery" class="tab">
+    <div class="toolbar">
+      <label class="field grow"><span>Класс</span><select id="g-class"></select></label>
+      <label class="field grow"><span>Автор</span><select id="g-author"><option value="">все</option></select></label>
+      <label class="field grow"><span>Статус</span>
+        <select id="g-status">
+          <option value="active">в датасете</option>
+          <option value="flagged">помеченные</option>
+          <option value="deleted">удалённые</option>
+          <option value="all">все</option>
+        </select>
+      </label>
+    </div>
+    <div class="stats" id="g-stats"></div>
+    <p class="note small">Миниатюры — ровно то, что получает модель: каноническая предобработка, 64×64.</p>
+    <div class="grid" id="g-grid"></div>
+    <div class="empty" id="g-empty" hidden>Пока пусто. Нарисуйте что-нибудь на вкладке «Рисовать».</div>
+    <div class="center"><button id="g-more" class="btn" type="button" hidden>Показать ещё</button></div>
+  </section>
+
+  <!-- ─────────────── Тест -->
+  <section id="tab-test" class="tab">
+    <div class="test-layout">
+      <div>
+        <div class="paper-wrap">
+          <canvas id="t-canvas" class="paper" aria-label="Холст для проверки модели"></canvas>
+          <div class="hint" id="t-hint">Нарисуйте — модель угадывает на лету</div>
+        </div>
+        <div class="actions">
+          <button id="t-undo" class="btn" type="button">Отменить</button>
+          <button id="t-clear" class="btn" type="button">Очистить</button>
+        </div>
+      </div>
+      <aside class="card result">
+        <div class="verdict" id="t-verdict"><span class="muted">Нарисуйте что-нибудь</span></div>
+        <ol class="top5" id="t-top"></ol>
+        <div class="sees">
+          <img id="t-preview" alt="" width="64" height="64">
+          <div><b>Так видит модель</b><span>64×64 после канонической предобработки</span><span id="t-ms"></span></div>
+        </div>
+        <div class="modelinfo" id="t-model"></div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

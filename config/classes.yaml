@@ -1,0 +1,134 @@
+# Классы классификатора рисунков для «Monkey School».
+#
+# Каждый класс:
+#   id          — метка модели (латиница, без пробелов); она же имя файла data/custom/<id>.ndjson
+#   ru          — русское имя (именительный падеж) для UI игры и редактора
+#   ru_acc      — винительный падеж для «Нарисуйте: …» (только у заданий)
+#   quickdraw   — список классов Quick, Draw! (точные имена файлов в бакете, с пробелами)
+#   task        — true: класс — задание урока рисования (→ config/lesson_prompts.json для Unity)
+#   cap         — сколько рисунков брать из КАЖДОГО источника Quick Draw (по умолчанию defaults.cap)
+#   sampling_weight — множитель доли класса в сбалансированной выборке при обучении
+#   augment     — normal | heavy (сильнее повороты/сдвиги, для маленьких собственных классов)
+#   target_precision — желаемая точность при подборе порога «узнал / не разобрал»
+#
+# Свои рисунки (редактор) для ЛЮБОГО класса кладутся в data/custom/<id>.ndjson и
+# автоматически смешиваются с Quick Draw (см. custom.repeat).
+
+version: 1
+
+# Каноническая предобработка (см. docs/PREPROCESS.md). Меняете — переподготовьте данные и
+# переэкспортируйте модель: параметры уходят в labels.json и должны совпасть с портом на C#.
+preprocess:
+  epsilon: 2.0        # Ramer–Douglas–Peucker, в единицах нормализованной сетки 0..255
+  size: 64            # сторона входного изображения N
+  pad: 2.0            # поля в пикселях выходного изображения
+  line_width: 2.0     # толщина линии в пикселях выходного изображения
+
+defaults:
+  cap: 20000                # рисунков на класс Quick Draw (полное обучение)
+  sampling_weight: 1.0
+  augment: normal
+  target_precision: 0.90
+  split: {val: 5, test: 5}  # проценты; разбиение детерминировано по хешу key_id
+
+custom:
+  dir: data/custom
+  repeat: 3                 # свои рисунки в train повторяются N раз (они ближе к игре — мышь)
+
+classes:
+  # ── задания урока рисования: классы Quick Draw (id = имя Quick Draw, пробелы → «_»).
+  #    task: true — попадает в config/lesson_prompts.json (список заданий для игры);
+  #    ru — именительный падеж, ru_acc — винительный для «Нарисуйте: …».
+  - {id: banana,      ru: Банан,      ru_acc: банан,      quickdraw: [banana],      task: true}
+  - {id: sun,         ru: Солнце,     ru_acc: солнце,     quickdraw: [sun],         task: true}
+  - {id: house,       ru: Домик,      ru_acc: домик,      quickdraw: [house],       task: true}
+  - {id: fish,        ru: Рыбка,      ru_acc: рыбку,      quickdraw: [fish],        task: true}
+  - {id: apple,       ru: Яблоко,     ru_acc: яблоко,     quickdraw: [apple],       task: true}
+  - {id: tree,        ru: Дерево,     ru_acc: дерево,     quickdraw: [tree],        task: true}
+  - {id: flower,      ru: Цветок,     ru_acc: цветок,     quickdraw: [flower],      task: true}
+  - {id: cat,         ru: Кошка,      ru_acc: кошку,      quickdraw: [cat],         task: true}
+  - {id: car,         ru: Машина,     ru_acc: машину,     quickdraw: [car],         task: true}
+  - {id: star,        ru: Звезда,     ru_acc: звезду,     quickdraw: [star],        task: true}
+  - {id: moon,        ru: Луна,       ru_acc: луну,       quickdraw: [moon],        task: true}
+  - {id: cloud,       ru: Облако,     ru_acc: облако,     quickdraw: [cloud],       task: true}
+  - {id: umbrella,    ru: Зонтик,     ru_acc: зонтик,     quickdraw: [umbrella],    task: true}
+  - {id: clock,       ru: Часы,       ru_acc: часы,       quickdraw: [clock],       task: true}
+  - {id: eyeglasses,  ru: Очки,       ru_acc: очки,       quickdraw: [eyeglasses],  task: true}
+  - {id: ice_cream,   ru: Мороженое,  ru_acc: мороженое,  quickdraw: [ice cream],   task: true}
+  - {id: butterfly,   ru: Бабочка,    ru_acc: бабочку,    quickdraw: [butterfly],   task: true}
+  - {id: snowman,     ru: Снеговик,   ru_acc: снеговика,  quickdraw: [snowman],     task: true}
+  - {id: bicycle,     ru: Велосипед,  ru_acc: велосипед,  quickdraw: [bicycle],     task: true}
+  - {id: airplane,    ru: Самолёт,    ru_acc: самолёт,    quickdraw: [airplane],    task: true}
+  - {id: sailboat,    ru: Кораблик,   ru_acc: кораблик,   quickdraw: [sailboat],    task: true}
+  - {id: key,         ru: Ключ,       ru_acc: ключ,       quickdraw: [key],         task: true}
+  - {id: pencil,      ru: Карандаш,   ru_acc: карандаш,   quickdraw: [pencil],      task: true}
+  - {id: mushroom,    ru: Гриб,       ru_acc: гриб,       quickdraw: [mushroom],    task: true}
+  - {id: rainbow,     ru: Радуга,     ru_acc: радугу,     quickdraw: [rainbow],     task: true}
+  - {id: snail,       ru: Улитка,     ru_acc: улитку,     quickdraw: [snail],       task: true}
+  - {id: smiley_face, ru: Смайлик,    ru_acc: смайлик,    quickdraw: [smiley face], task: true}
+  - {id: candle,      ru: Свеча,      ru_acc: свечу,      quickdraw: [candle],      task: true}
+  - {id: envelope,    ru: Конверт,    ru_acc: конверт,    quickdraw: [envelope],    task: true}
+  - {id: guitar,      ru: Гитара,     ru_acc: гитару,     quickdraw: [guitar],      task: true}
+  - {id: octopus,     ru: Осьминог,   ru_acc: осьминога,  quickdraw: [octopus],     task: true}
+
+  # ── класс-отказ: смесь других классов Quick Draw («не то, что просили»)
+  - id: other
+    ru: Другое
+    ru_acc: что угодно, кроме заданий
+    kind: other
+    cap: 1500               # на КАЖДЫЙ источник ниже
+    sampling_weight: 2.0    # «другое» — широкий класс, ему нужна доля побольше
+    quickdraw: [
+      anvil, axe, backpack, bed, bee, bird, bread, bridge, broom, bucket,
+      cactus, camera, castle, chair, circle, cow, crab, crown, diamond, dog,
+      donut, door, duck, elephant, fence, fork, frog, giraffe, hammer, hat,
+      headphones, helicopter, horse, ladder, leaf, light bulb, lightning, line, lion, mountain,
+      mouse, bus, owl, pig, pineapple, pizza, rabbit, scissors, shoe, snake,
+      spider, square, squiggle, table, teapot, tent, triangle, truck, t-shirt, zigzag
+    ]
+
+  # ── свой класс: неприличный рисунок; данные только из редактора (data/custom/rude.ndjson)
+  - id: rude
+    ru: Неприличное
+    ru_acc: неприличный рисунок
+    kind: custom
+    quickdraw: []
+    min_samples: 500        # меньше — обучение идёт, но с громким предупреждением
+    target: 3000            # цель сбора в редакторе
+    sampling_weight: 1.0
+    augment: heavy
+    target_precision: 0.85
+
+# Профили — подмножества для быстрых прогонов. Любой скрипт: --profile smoke
+profiles:
+  smoke:
+    classes: [banana, sun, house, fish, apple, tree, star, car, other, rude]
+    cap: 5000               # на класс
+    other_sources: 10       # первые N источников other
+    other_cap: 1000         # на источник other
+
+# Редактор датасета
+editor:
+  default_class: rude
+  targets: {rude: 3000, default: 300}
+  variety_prompts:
+    - маленький
+    - большой, на весь лист
+    - в углу листа
+    - сбоку
+    - повёрнутый
+    - вверх ногами
+    - одной линией, не отрывая
+    - криво и быстро
+    - медленно и аккуратно
+    - очень просто, 2–3 штриха
+    - подробно, много деталей
+    - только контур
+    - с закраской (штриховка)
+    - вытянутый
+    - толстый и короткий
+    - как ребёнок
+    - рядом с другим рисунком
+    - с подписью или буквами рядом
+    - левой рукой
+    - как на заборе
