@@ -19,3 +19,8 @@ webapp/.vercel/
 # отчёты с отрисованными рисунками людей и логи прогонов — не в git
 reports/
 runs_ab_*.log
+
+# playground: модель публикуется отдельно (scripts/publish_playground.py), вендор ort — большой бинарь
+playground/model/
+playground/vendor/
+playground/.vercel/

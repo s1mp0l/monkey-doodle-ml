@@ -107,6 +107,60 @@
     });
   }
 
+  // ───────────────────────────────────────────── растеризация (порт doodle/preprocess.rasterize, docs/PREPROCESS.md)
+  const SIZE = 64, PAD = 2.0, LINE_WIDTH = 2.0;
+
+  /** Нормализованные штрихи [[xs],[ys]] → отрезки [ax,ay,bx,by] в пикселях выхода. */
+  function toPixelSegments(strokes, size, pad) {
+    const pts = toPointArrays(strokes);
+    if (!pts.length) return [];
+    let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+    for (const p of pts) for (const [x, y] of p) {
+      if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+      if (y < mny) mny = y; if (y > mxy) mxy = y;
+    }
+    const cx = (mnx + mxx) / 2, cy = (mny + mxy) / 2, f = (size - 2 * pad) / 255.0;
+    const segs = [];
+    for (const p of pts) {
+      const q = p.map(([x, y]) => [size / 2 + (x - cx) * f, size / 2 + (y - cy) * f]);
+      if (q.length === 1) segs.push([q[0][0], q[0][1], q[0][0], q[0][1]]);
+      else for (let i = 0; i < q.length - 1; i++) segs.push([q[i][0], q[i][1], q[i + 1][0], q[i + 1][1]]);
+    }
+    return segs;
+  }
+
+  /** Растеризация «расстояние до ближайшего отрезка» → Float32Array size*size (row-major, 1 = чернила). */
+  function rasterize(strokes, size = SIZE, pad = PAD, lineWidth = LINE_WIDTH) {
+    const img = new Float32Array(size * size);
+    const segs = toPixelSegments(strokes, size, pad);
+    if (!segs.length) return img;
+    const r = lineWidth / 2;
+    for (let row = 0; row < size; row++) {
+      const py = row + 0.5;
+      for (let col = 0; col < size; col++) {
+        const px = col + 0.5;
+        let best = Infinity;
+        for (let k = 0; k < segs.length; k++) {
+          const [ax, ay, bx, by] = segs[k];
+          const abx = bx - ax, aby = by - ay, l2 = abx * abx + aby * aby;
+          const apx = px - ax, apy = py - ay;
+          let t = l2 === 0 ? 0 : (apx * abx + apy * aby) / l2;
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const dx = apx - t * abx, dy = apy - t * aby, d = Math.sqrt(dx * dx + dy * dy);
+          if (d < best) best = d;
+        }
+        let v = r + 0.5 - best;
+        img[row * size + col] = v < 0 ? 0 : v > 1 ? 1 : v;
+      }
+    }
+    return img;
+  }
+
+  /** Сырой рисунок → Float32Array size*size (нормализация + растеризация). */
+  function preprocess(drawing, size = SIZE, pad = PAD, lineWidth = LINE_WIDTH, eps = CONFIG.epsilon) {
+    return rasterize(normalize(drawing, eps), size, pad, lineWidth);
+  }
+
   // ───────────────────────────────────────────── запись
   function isoLocal(d = new Date()) {
     const pad = (v, n = 2) => String(v).padStart(n, "0");
@@ -154,5 +208,5 @@
     return `${word}_${nick}_${date}_${count}.ndjson`;
   }
 
-  return { CONFIG, normalize, rdp, segDist, makeRecord, toNdjson, exportFilename, isoLocal, uuid };
+  return { CONFIG, normalize, rdp, segDist, rasterize, preprocess, toPixelSegments, makeRecord, toNdjson, exportFilename, isoLocal, uuid };
 });

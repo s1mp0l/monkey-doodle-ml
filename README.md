@@ -234,6 +234,27 @@ swastika / body / poop / butt / hate / finger), **частые путаницы*
 `full_run.ps1` начинать заново (он не возобновляет с середины, но пропустит скачанное и, без `-Regen`,
 не трогает уже сгенерированную синтетику).
 
+## Угадайка (playground)
+
+Статический сайт `playground/`: запускает экспортированную ONNX-модель прямо в браузере
+(onnxruntime-web, WASM) — рисуешь, обезьянка угадывает. Есть режим «Игра»: случайное задание из
+`lesson_prompts.json`, таймер 20 с, счёт и серия; если модель уверенно видит `rude` — карточка
+«К директору!» (без показа, что именно). Ни сети, ни бэкенда в рантайме: файлы onnxruntime вшиты в
+`playground/vendor/` (не с CDN), поэтому CSP строгий (`connect-src 'self'`, `script-src 'self'
+'wasm-unsafe-eval'`). Предобработка — тот же `core.js`, что в webapp (упрощение + растеризация,
+бит-в-бит с `doodle/preprocess`, проверяется в pytest, там же паритет JS+onnxruntime-web ↔ Python по top-1).
+
+```powershell
+.venv\Scripts\python scripts/fetch_ort.py                       # вшить onnxruntime-web в vendor/ (один раз)
+.venv\Scripts\python scripts/publish_playground.py --model models/latest   # модель (fp16, если паритет) + labels + prompts
+cd playground; python -m http.server 8080                       # → http://127.0.0.1:8080
+```
+
+`playground/model/` и `playground/vendor/` — в `.gitignore` (модель и бинарь WASM публикуются отдельно,
+двумя командами выше). Деплой на Vercel: Root Directory `playground`, Framework Other, без сборки,
+Output `.`, затем `npx vercel --prod` из `playground/` (нужны выполненные `fetch_ort.py` и
+`publish_playground.py`, чтобы `vendor/` и `model/` попали в деплой).
+
 ## В Unity
 
 1. Пакет **Inference Engine** (`com.unity.ai.inference`, бывший Sentis) через Package Manager. Он
