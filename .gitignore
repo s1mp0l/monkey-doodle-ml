@@ -20,7 +20,5 @@ webapp/.vercel/
 reports/
 runs_ab_*.log
 
-# playground: модель публикуется отдельно (scripts/publish_playground.py), вендор ort — большой бинарь
-playground/model/
-playground/vendor/
+# playground: модель (scripts/publish_playground.py) и вендор ort (scripts/fetch_ort.py) коммитятся — Vercel деплоит из репозитория
 playground/.vercel/

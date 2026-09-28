@@ -1,0 +1,495 @@
+{
+  "model": "doodle.onnx",
+  "model_fp16": "doodle_fp16.onnx",
+  "run": "20260928-001506",
+  "epoch": 12,
+  "opset": 15,
+  "input": {
+    "name": "input",
+    "shape": [
+      1,
+      1,
+      64,
+      64
+    ],
+    "dtype": "float32",
+    "layout": "NCHW",
+    "values": "0 = фон, 1 = чернила; строка 0 — верх",
+    "spec": "docs/PREPROCESS.md"
+  },
+  "output": {
+    "name": "probs",
+    "shape": [
+      1,
+      33
+    ],
+    "softmax": true,
+    "temperature": 0.7327732957229371
+  },
+  "preprocess": {
+    "epsilon": 2.0,
+    "scale_max": 255.0,
+    "size": 64,
+    "pad": 2.0,
+    "line_width": 2.0
+  },
+  "reject": {
+    "label": "не разобрал",
+    "rule": "top-1 = other ИЛИ probs[top-1] < threshold класса → «не разобрал»"
+  },
+  "classes": [
+    {
+      "index": 0,
+      "id": "banana",
+      "quickdraw": [
+        "banana"
+      ],
+      "ru": "Банан",
+      "ru_acc": "банан",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 1,
+      "id": "sun",
+      "quickdraw": [
+        "sun"
+      ],
+      "ru": "Солнце",
+      "ru_acc": "солнце",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 2,
+      "id": "house",
+      "quickdraw": [
+        "house"
+      ],
+      "ru": "Домик",
+      "ru_acc": "домик",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 3,
+      "id": "fish",
+      "quickdraw": [
+        "fish"
+      ],
+      "ru": "Рыбка",
+      "ru_acc": "рыбку",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 4,
+      "id": "apple",
+      "quickdraw": [
+        "apple"
+      ],
+      "ru": "Яблоко",
+      "ru_acc": "яблоко",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 5,
+      "id": "tree",
+      "quickdraw": [
+        "tree"
+      ],
+      "ru": "Дерево",
+      "ru_acc": "дерево",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 6,
+      "id": "flower",
+      "quickdraw": [
+        "flower"
+      ],
+      "ru": "Цветок",
+      "ru_acc": "цветок",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 7,
+      "id": "cat",
+      "quickdraw": [
+        "cat"
+      ],
+      "ru": "Кошка",
+      "ru_acc": "кошку",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 8,
+      "id": "car",
+      "quickdraw": [
+        "car"
+      ],
+      "ru": "Машина",
+      "ru_acc": "машину",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 9,
+      "id": "star",
+      "quickdraw": [
+        "star"
+      ],
+      "ru": "Звезда",
+      "ru_acc": "звезду",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 10,
+      "id": "moon",
+      "quickdraw": [
+        "moon"
+      ],
+      "ru": "Луна",
+      "ru_acc": "луну",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.98
+    },
+    {
+      "index": 11,
+      "id": "cloud",
+      "quickdraw": [
+        "cloud"
+      ],
+      "ru": "Облако",
+      "ru_acc": "облако",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 12,
+      "id": "umbrella",
+      "quickdraw": [
+        "umbrella"
+      ],
+      "ru": "Зонтик",
+      "ru_acc": "зонтик",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 13,
+      "id": "clock",
+      "quickdraw": [
+        "clock"
+      ],
+      "ru": "Часы",
+      "ru_acc": "часы",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 14,
+      "id": "eyeglasses",
+      "quickdraw": [
+        "eyeglasses"
+      ],
+      "ru": "Очки",
+      "ru_acc": "очки",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 15,
+      "id": "ice_cream",
+      "quickdraw": [
+        "ice cream"
+      ],
+      "ru": "Мороженое",
+      "ru_acc": "мороженое",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 16,
+      "id": "butterfly",
+      "quickdraw": [
+        "butterfly"
+      ],
+      "ru": "Бабочка",
+      "ru_acc": "бабочку",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 17,
+      "id": "snowman",
+      "quickdraw": [
+        "snowman"
+      ],
+      "ru": "Снеговик",
+      "ru_acc": "снеговика",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 18,
+      "id": "bicycle",
+      "quickdraw": [
+        "bicycle"
+      ],
+      "ru": "Велосипед",
+      "ru_acc": "велосипед",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 19,
+      "id": "airplane",
+      "quickdraw": [
+        "airplane"
+      ],
+      "ru": "Самолёт",
+      "ru_acc": "самолёт",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 20,
+      "id": "sailboat",
+      "quickdraw": [
+        "sailboat"
+      ],
+      "ru": "Кораблик",
+      "ru_acc": "кораблик",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 21,
+      "id": "key",
+      "quickdraw": [
+        "key"
+      ],
+      "ru": "Ключ",
+      "ru_acc": "ключ",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 22,
+      "id": "pencil",
+      "quickdraw": [
+        "pencil"
+      ],
+      "ru": "Карандаш",
+      "ru_acc": "карандаш",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.83
+    },
+    {
+      "index": 23,
+      "id": "mushroom",
+      "quickdraw": [
+        "mushroom"
+      ],
+      "ru": "Гриб",
+      "ru_acc": "гриб",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 24,
+      "id": "rainbow",
+      "quickdraw": [
+        "rainbow"
+      ],
+      "ru": "Радуга",
+      "ru_acc": "радугу",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 25,
+      "id": "snail",
+      "quickdraw": [
+        "snail"
+      ],
+      "ru": "Улитка",
+      "ru_acc": "улитку",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 26,
+      "id": "smiley_face",
+      "quickdraw": [
+        "smiley face"
+      ],
+      "ru": "Смайлик",
+      "ru_acc": "смайлик",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 27,
+      "id": "candle",
+      "quickdraw": [
+        "candle"
+      ],
+      "ru": "Свеча",
+      "ru_acc": "свечу",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.65
+    },
+    {
+      "index": 28,
+      "id": "envelope",
+      "quickdraw": [
+        "envelope"
+      ],
+      "ru": "Конверт",
+      "ru_acc": "конверт",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 29,
+      "id": "guitar",
+      "quickdraw": [
+        "guitar"
+      ],
+      "ru": "Гитара",
+      "ru_acc": "гитару",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 30,
+      "id": "octopus",
+      "quickdraw": [
+        "octopus"
+      ],
+      "ru": "Осьминог",
+      "ru_acc": "осьминога",
+      "task": true,
+      "kind": "quickdraw",
+      "threshold": 0.5
+    },
+    {
+      "index": 31,
+      "id": "other",
+      "quickdraw": [
+        "anvil",
+        "axe",
+        "backpack",
+        "bed",
+        "bee",
+        "bird",
+        "bread",
+        "bridge",
+        "broom",
+        "bucket",
+        "cactus",
+        "camera",
+        "castle",
+        "chair",
+        "circle",
+        "cow",
+        "crab",
+        "crown",
+        "diamond",
+        "dog",
+        "donut",
+        "door",
+        "duck",
+        "elephant",
+        "fence",
+        "fork",
+        "frog",
+        "giraffe",
+        "hammer",
+        "hat",
+        "headphones",
+        "helicopter",
+        "horse",
+        "ladder",
+        "leaf",
+        "light bulb",
+        "lightning",
+        "line",
+        "lion",
+        "mountain",
+        "mouse",
+        "bus",
+        "owl",
+        "pig",
+        "pineapple",
+        "pizza",
+        "rabbit",
+        "scissors",
+        "shoe",
+        "snake",
+        "spider",
+        "square",
+        "squiggle",
+        "table",
+        "teapot",
+        "tent",
+        "triangle",
+        "truck",
+        "t-shirt",
+        "zigzag"
+      ],
+      "ru": "Другое",
+      "ru_acc": "что угодно, кроме заданий",
+      "task": false,
+      "kind": "other",
+      "threshold": null
+    },
+    {
+      "index": 32,
+      "id": "rude",
+      "quickdraw": [],
+      "ru": "Неприличное",
+      "ru_acc": "неприличный рисунок",
+      "task": false,
+      "kind": "custom",
+      "threshold": 0.91
+    }
+  ]
+}
