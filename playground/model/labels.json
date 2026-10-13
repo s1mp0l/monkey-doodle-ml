@@ -1,8 +1,8 @@
 {
   "model": "doodle.onnx",
   "model_fp16": "doodle_fp16.onnx",
-  "run": "20260928-001506",
-  "epoch": 12,
+  "run": "20261013-231715",
+  "epoch": 27,
   "opset": 15,
   "input": {
     "name": "input",
@@ -24,7 +24,7 @@
       33
     ],
     "softmax": true,
-    "temperature": 0.7327732957229371
+    "temperature": 0.7391387654592362
   },
   "preprocess": {
     "epsilon": 2.0,
@@ -168,7 +168,7 @@
       "ru_acc": "луну",
       "task": true,
       "kind": "quickdraw",
-      "threshold": 0.98
+      "threshold": 0.85
     },
     {
       "index": 11,
@@ -312,7 +312,7 @@
       "ru_acc": "карандаш",
       "task": true,
       "kind": "quickdraw",
-      "threshold": 0.83
+      "threshold": 0.71
     },
     {
       "index": 23,
@@ -372,7 +372,7 @@
       "ru_acc": "свечу",
       "task": true,
       "kind": "quickdraw",
-      "threshold": 0.65
+      "threshold": 0.5
     },
     {
       "index": 28,
@@ -489,7 +489,7 @@
       "ru_acc": "неприличный рисунок",
       "task": false,
       "kind": "custom",
-      "threshold": 0.91
+      "threshold": 0.68
     }
   ]
 }

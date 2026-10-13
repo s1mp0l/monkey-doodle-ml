@@ -42,7 +42,7 @@ def _subtype_of(rec, human_subtypes):
         return None
     src = rec.get("source")
     if src == "synthetic":
-        return "phallus"
+        return rec.get("subtype") or "phallus"
     if src in ("augmented", "composite"):
         return rec.get("subtype")
     return human_subtypes.get(rec.get("key_id"))

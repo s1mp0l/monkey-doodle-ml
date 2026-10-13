@@ -5,6 +5,8 @@
     # генерация 5000 (с калибровкой, если она есть) → data/synthetic/rude.ndjson + reports/synth_rude_sheet.png
     python scripts/synth_rude.py -n 5000 --seed 1
     python scripts/synth_rude.py -n 200 --no-calibration --out data/synthetic/test.ndjson
+    # плюс простые подтипы (doodle/synth_shapes.py) в тот же файл; --shapes "" — без них
+    python scripts/synth_rude.py -n 6000 --shapes swastika=2500,butt=1000,breasts=1000
 
 Калибровка пишется в data/synthetic/rude_calibration.json (там только статистики, не рисунки).
 Контактный лист: слева 100 синтетических, справа до 100 рисунков людей — через каноническую
@@ -21,7 +23,7 @@ import numpy as np
 
 from _common import DATA, ROOT
 from doodle import preprocess as pp
-from doodle import synth
+from doodle import synth, synth_shapes
 from doodle.ndjson_io import iter_records
 
 SYN_DIR = DATA / "synthetic"
@@ -96,6 +98,8 @@ def main():
     ap.add_argument("--no-calibration", action="store_true", help="генерировать с настройками по умолчанию")
     ap.add_argument("--human", default=str(DATA / "custom" / "rude.ndjson"), help="рисунки людей для контактного листа")
     ap.add_argument("--sheet", default=str(REPORTS / "synth_rude_sheet.png"))
+    ap.add_argument("--shapes", default="swastika=2500,butt=1000,breasts=1000",
+                    help="простые подтипы (doodle/synth_shapes.py) в тот же файл: имя=число через запятую; '' — без них")
     ap.add_argument("--sheet-only", action="store_true", help="не генерировать — перерисовать лист по готовому --out")
     args = ap.parse_args()
 
@@ -125,12 +129,17 @@ def main():
         cal = json.loads(CAL_PATH.read_text(encoding="utf-8"))
         print(f"калибровка: {CAL_PATH} ({cal['n']} рисунков)")
     recs = synth.generate(args.n, args.seed, cal)
+    shape_counts = {k: int(v) for k, v in (kv.split("=") for kv in args.shapes.split(",") if kv.strip())}
+    shapes = synth_shapes.generate(shape_counts, args.seed, cal) if shape_counts else []
+    if shapes:
+        print(f"простые подтипы: {shape_counts}")
+        contact_sheet(shapes, [], Path(args.sheet).with_name("synth_shapes_sheet.png"), seed=args.seed)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
-        for r in recs:
+        for r in recs + shapes:
             f.write(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n")
-    print(f"{len(recs)} рисунков → {out}")
+    print(f"{len(recs) + len(shapes)} рисунков → {out}")
 
     hum_all = human_drawings(Path(args.human), None) if Path(args.human).exists() else []
     hum = human_drawings(Path(args.human), args.subtype or None) if Path(args.human).exists() else []

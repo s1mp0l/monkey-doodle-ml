@@ -89,7 +89,7 @@ classes:
     # «Трудные отрицательные»: классы Quick Draw, похожие на подтипы rude (вытянутые предметы — на фаллос,
     # два круга — на грудь/яйца, палец/рука — на средний палец, человечки, «слоёные» кучки, вертушки).
     # Берутся с отдельным, бóльшим лимитом на источник.
-    hard_cap: 4000
+    hard_cap: 1500          # было 4000: 124 тыс. «похожих» заглушали rude (доля rude в эпохе была 1.4 %)
     hard_negatives: [
       carrot, hot dog, baseball bat, flashlight, lipstick, wine bottle, microphone, marker, lollipop, popsicle,
       peanut, string bean, syringe, crayon, paintbrush, screwdriver, submarine, sword, toothbrush, asparagus,
@@ -104,7 +104,7 @@ classes:
     quickdraw: []
     min_samples: 500        # меньше — обучение идёт, но с громким предупреждением
     target: 3000            # цель сбора в редакторе
-    sampling_weight: 1.0
+    sampling_weight: 3.0    # было 1.0 → rude был 1.4 % примеров эпохи
     augment: heavy
     target_precision: 0.85
     # Гигиена оценки: рисунки ЛЮДЕЙ (editor + web) делятся отдельно от синтетики. test — только люди,
@@ -116,7 +116,9 @@ classes:
     # max_share от train-набора класса; loss_weight — вес её примеров в функции потерь.
     # max_share 0.5: люди не меньше половины уникальных train-рисунков класса (пока нет A/B-сравнения —
     # см. README); loss_weight синтетики 0.5 — в source_loss_weights ниже.
-    synthetic: {file: data/synthetic/rude.ndjson, max_share: 0.5}
+    # max_share 0.95: при 300 людях в train лимит 0.5 пропускал всего 300 синтетических из ~10 тыс.;
+    # теперь синтетику ограничивает в основном subtype_balance, а её вклад в loss — вес 0.5.
+    synthetic: {file: data/synthetic/rude.ndjson, max_share: 0.95}
     # Аугментация рисунков людей (scripts/augment_rude.py) — только в train, split берётся у родителя
     # (дети test/val-родителей не идут в train). Композиции rude/other — отдельными файлами.
     augmented: {file: data/augmented/rude.ndjson}
@@ -124,7 +126,7 @@ classes:
     # Балансировка подтипов внутри rude: синтетика+аугментация каждого подтипа урезается так, чтобы
     # подтип не превышал subtype_target УНИКАЛЬНЫХ train-рисунков (люди не режутся). Иначе 6000 фаллосов
     # заглушили бы слова/свастики. Композиции сюда не входят (они — отдельная «форма», не подтип).
-    subtype_balance: {target: 800}
+    subtype_balance: {target: 2000}
 
 # Вес примера в функции потерь по источнику (quickdraw | human | synthetic); train.py --source-weights
 source_loss_weights: {quickdraw: 1.0, human: 1.0, synthetic: 0.5}

@@ -27,7 +27,7 @@ function Step($name, [scriptblock]$cmd) {
 Step "проверка CUDA" { & $py -c "import torch;assert torch.cuda.is_available();print(torch.cuda.get_device_name(0))" }
 if (-not $SkipDownload) { Step "скачивание Quick Draw (full)" { & $py scripts/download.py } }
 if ($Regen) {
-  Step "калибровка + синтетика rude" { & $py scripts/synth_rude.py --calibrate data/custom/rude.ndjson -n 6000 --seed 1 }
+  Step "калибровка + синтетика rude" { & $py scripts/synth_rude.py --calibrate data/custom/rude.ndjson -n 6000 --seed 1 --shapes swastika=2500,butt=1000,breasts=1000 }
   Step "аугментация + композиции"    { & $py scripts/augment_rude.py }
 }
 Step "подготовка данных (full)"      { & $py scripts/prepare.py --profile full }
